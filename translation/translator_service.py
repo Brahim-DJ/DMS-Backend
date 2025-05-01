@@ -72,8 +72,8 @@ async def consume_messages(producer: AIOKafkaProducer):
                     # Prepare response message
                     response = {
                         "id": document_id,
-                        "original_title": original_title,
-                        "translated_title": translated_title,
+                        "originalTitle": original_title,
+                        "translatedTitle": translated_title,
                         "language": "es"
                     }
                     

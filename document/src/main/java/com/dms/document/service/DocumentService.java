@@ -3,6 +3,7 @@ package com.dms.document.service;
 import com.dms.document.dto.DocumentRequest;
 import com.dms.document.dto.DocumentResponse;
 import com.dms.document.exception.ResourceNotFoundException;
+import com.dms.document.kafka.DocumentKafkaProducer;
 import com.dms.document.model.Document;
 import com.dms.document.model.DocumentCategory;
 import com.dms.document.repository.DocumentCategoryRepository;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 public class DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentCategoryRepository categoryRepository;
+    private final DocumentKafkaProducer documentKafkaProducer;
 
     @Transactional
     public DocumentResponse createDocument(DocumentRequest request) {
@@ -51,6 +53,10 @@ public class DocumentService {
                 .build();
         
         Document savedDocument = documentRepository.save(document);
+        
+        // Send Kafka message for translation
+        documentKafkaProducer.sendDocumentCreatedMessage(savedDocument.getId(), savedDocument.getTitle());
+        
         return mapToDocumentResponse(savedDocument);
     }
 
@@ -100,6 +106,9 @@ public class DocumentService {
         DocumentCategory category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
         
+        // Check if title has changed
+        boolean titleChanged = !document.getTitle().equals(request.getTitle());
+        
         document.setTitle(request.getTitle());
         document.setDepartmentId(request.getDepartmentId());
         document.setCategory(category);
@@ -110,6 +119,12 @@ public class DocumentService {
         document.setUpdatedAt(LocalDateTime.now());
         
         Document updatedDocument = documentRepository.save(document);
+        
+        // If title was updated, request a new translation
+        if (titleChanged) {
+            documentKafkaProducer.sendDocumentCreatedMessage(updatedDocument.getId(), updatedDocument.getTitle());
+        }
+        
         return mapToDocumentResponse(updatedDocument);
     }
 
@@ -145,6 +160,7 @@ public class DocumentService {
         return DocumentResponse.builder()
                 .id(document.getId())
                 .title(document.getTitle())
+                .translatedTitle(document.getTranslatedTitle())
                 .departmentId(document.getDepartmentId())
                 .category(new DocumentResponse.CategoryDto(
                     document.getCategory().getId(),

@@ -19,6 +19,9 @@ public class Document {
     
     @Column(nullable = false)
     private String title;
+
+    @Column(name = "translated_title")
+    private String translatedTitle;
     
     // Department reference from auth service
     @Column(nullable = false)

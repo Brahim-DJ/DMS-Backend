@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class DocumentResponse {
     private Long id;
     private String title;
+    private String translatedTitle;
     private Long departmentId;
     private CategoryDto category;
     private String fileName;
