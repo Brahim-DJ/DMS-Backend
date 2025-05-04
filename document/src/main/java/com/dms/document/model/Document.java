@@ -31,11 +31,15 @@ public class Document {
     @JoinColumn(name = "category_id", nullable = false)
     private DocumentCategory category;
     
-    // Metadata for file (no actual file upload yet)
+    // File metadata
     private String fileName;
     private String fileDescription;
     private String fileType;
     private Long fileSizeBytes;
+    
+    // S3 storage information
+    @Column(name = "file_key")
+    private String fileKey;
     
     @Column(name = "created_by", nullable = false)
     private String createdBy;

@@ -156,8 +156,8 @@ public class DocumentService {
                 .collect(Collectors.toList());
     }
     
-    private DocumentResponse mapToDocumentResponse(Document document) {
-        return DocumentResponse.builder()
+    public DocumentResponse mapToDocumentResponse(Document document) {
+        DocumentResponse response = DocumentResponse.builder()
                 .id(document.getId())
                 .title(document.getTitle())
                 .translatedTitle(document.getTranslatedTitle())
@@ -173,5 +173,7 @@ public class DocumentService {
                 .createdAt(document.getCreatedAt())
                 .updatedAt(document.getUpdatedAt())
                 .build();
+                
+        return response;
     }
 }
