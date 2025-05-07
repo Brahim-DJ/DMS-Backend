@@ -1,36 +1,32 @@
 package com.dms.document.service;
 
+import io.minio.*;
+import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.*;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class FileStorageService {
 
-    private final S3Client s3Client;
-    private final S3Presigner s3Presigner;
+    private final MinioClient minioClient;
 
     @Value("${minio.bucket-name}")
     private String bucketName;
 
     /**
-     * Upload a file to S3 storage
+     * Upload a file to MinIO storage
      * @param file The file to upload
      * @param documentId The document ID to associate with the file
-     * @return The S3 object key (path) of the uploaded file
+     * @return The object key (path) of the uploaded file
      */
     public String uploadFile(MultipartFile file, Long documentId) {
         try {
@@ -43,37 +39,39 @@ public class FileStorageService {
 
             ensureBucketExists();
 
-            // Upload file to S3
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+            // Determine correct content type based on file extension
+            String contentType = determineContentType(file.getOriginalFilename(), file.getContentType());
+            
+            // Upload file to MinIO
+            minioClient.putObject(
+                PutObjectArgs.builder()
                     .bucket(bucketName)
-                    .key(key)
-                    .contentType(file.getContentType())
-                    .contentLength(file.getSize())
-                    .build();
-
-            s3Client.putObject(putObjectRequest, 
-                    RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+                    .object(key)
+                    .contentType(contentType)
+                    .stream(file.getInputStream(), file.getSize(), -1)
+                    .build()
+            );
 
             log.info("File uploaded successfully to path: {}", key);
             return key;
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to upload file", e);
             throw new RuntimeException("Failed to upload file: " + e.getMessage());
         }
     }
 
     /**
-     * Delete a file from S3 storage
-     * @param fileKey The S3 key of the file to delete
+     * Delete a file from MinIO storage
+     * @param fileKey The object key of the file to delete
      */
     public void deleteFile(String fileKey) {
         try {
-            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+            minioClient.removeObject(
+                RemoveObjectArgs.builder()
                     .bucket(bucketName)
-                    .key(fileKey)
-                    .build();
-
-            s3Client.deleteObject(deleteObjectRequest);
+                    .object(fileKey)
+                    .build()
+            );
             log.info("File deleted successfully: {}", fileKey);
         } catch (Exception e) {
             log.error("Failed to delete file", e);
@@ -83,39 +81,45 @@ public class FileStorageService {
 
     /**
      * Generate a pre-signed URL for temporary file access
-     * @param fileKey The S3 key of the file
+     * @param fileKey The object key of the file
      * @param durationMinutes How long the URL should be valid for (in minutes)
      * @return A pre-signed URL for file access
      */
     public String generatePresignedUrl(String fileKey, int durationMinutes) {
-        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofMinutes(durationMinutes))
-                .getObjectRequest(GetObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(fileKey)
-                        .build())
-                .build();
-
-        String presignedUrl = s3Presigner.presignGetObject(presignRequest).url().toString();
-        log.info("Generated presigned URL for file: {}", fileKey);
-        return presignedUrl;
+        try {
+            return minioClient.getPresignedObjectUrl(
+                GetPresignedObjectUrlArgs.builder()
+                    .bucket(bucketName)
+                    .object(fileKey)
+                    .method(Method.GET)
+                    .expiry(durationMinutes, TimeUnit.MINUTES)
+                    .build()
+            );
+        } catch (Exception e) {
+            log.error("Failed to generate presigned URL", e);
+            throw new RuntimeException("Failed to generate presigned URL: " + e.getMessage());
+        }
     }
 
     private void ensureBucketExists() {
         try {
-            HeadBucketRequest headBucketRequest = HeadBucketRequest.builder()
+            boolean bucketExists = minioClient.bucketExists(
+                BucketExistsArgs.builder()
                     .bucket(bucketName)
-                    .build();
+                    .build()
+            );
             
-            s3Client.headBucket(headBucketRequest);
-        } catch (NoSuchBucketException e) {
-            // Bucket doesn't exist, create it
-            CreateBucketRequest createBucketRequest = CreateBucketRequest.builder()
-                    .bucket(bucketName)
-                    .build();
-            
-            s3Client.createBucket(createBucketRequest);
-            log.info("Bucket created: {}", bucketName);
+            if (!bucketExists) {
+                minioClient.makeBucket(
+                    MakeBucketArgs.builder()
+                        .bucket(bucketName)
+                        .build()
+                );
+                log.info("Bucket created: {}", bucketName);
+            }
+        } catch (Exception e) {
+            log.error("Failed to check/create bucket", e);
+            throw new RuntimeException("Failed to check/create bucket: " + e.getMessage());
         }
     }
     
@@ -124,5 +128,45 @@ public class FileStorageService {
             return "";
         }
         return filename.substring(filename.lastIndexOf("."));
+    }
+    
+    /**
+     * Determines the correct content type based on file extension and fallback content type
+     * @param filename The original filename with extension
+     * @param fallbackContentType The content type provided by the client (may be incorrect)
+     * @return The correct content type
+     */
+    private String determineContentType(String filename, String fallbackContentType) {
+        if (filename == null || filename.isEmpty()) {
+            return fallbackContentType;
+        }
+        
+        String extension = getFileExtension(filename).toLowerCase();
+        
+        // Map common file extensions to their correct MIME types
+        switch (extension) {
+            case ".jpg":
+            case ".jpeg":
+                return "image/jpeg";
+            case ".png":
+                return "image/png";
+            case ".gif":
+                return "image/gif";
+            case ".pdf":
+                return "application/pdf";
+            case ".doc":
+                return "application/msword";
+            case ".docx":
+                return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case ".xls":
+                return "application/vnd.ms-excel";
+            case ".xlsx":
+                return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case ".txt":
+                return "text/plain";
+            default:
+                // If we can't determine from extension, use the provided content type
+                return fallbackContentType;
+        }
     }
 }
