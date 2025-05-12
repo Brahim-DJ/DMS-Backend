@@ -1,0 +1,905 @@
+openapi: 3.0.0
+info:
+  title: Document Management System API
+  description: API for the Document Management System (DMS)
+  version: 1.0.0
+  contact:
+    name: Brahim-DJ
+servers:
+  - url: http://localhost:8080
+    description: Development server
+tags:
+  - name: Authentication
+    description: Authentication operations
+  - name: Users
+    description: Operations related to user management
+  - name: Departments
+    description: Operations related to department management
+  - name: Documents
+    description: Operations related to document management
+  - name: Categories
+    description: Operations related to document categories
+  - name: Files
+    description: Operations related to file management
+
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Creates a new user account in the system
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user
+      description: Authenticates a user and returns a JWT token
+      operationId: authenticateUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/validate:
+    get:
+      tags:
+        - Authentication
+      summary: Validate token
+      description: Validates if a JWT token is valid
+      operationId: validateToken
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+
+  /api/users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      description: Retrieves all users in the system (admin only)
+      operationId: getAllUsers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+        '403':
+          description: Forbidden - requires admin privileges
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: Retrieves a user by their ID (admin or same user)
+      operationId: getUserById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: Updates a user's information (admin only)
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - requires admin privileges
+        '404':
+          description: User not found
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: Deletes a user (admin only)
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: User deleted successfully
+        '403':
+          description: Forbidden - requires admin privileges
+        '404':
+          description: User not found
+
+  /api/users/{id}/departments:
+    post:
+      tags:
+        - Users
+      summary: Assign departments to user
+      description: Assigns departments to a user (admin only)
+      operationId: assignDepartments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentAssignRequest'
+      responses:
+        '200':
+          description: Updated user with departments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '403':
+          description: Forbidden - requires admin privileges
+        '404':
+          description: User or department not found
+    delete:
+      tags:
+        - Users
+      summary: Remove departments from user
+      description: Removes departments from a user (admin only)
+      operationId: removeDepartments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentAssignRequest'
+      responses:
+        '200':
+          description: Updated user with departments removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '403':
+          description: Forbidden - requires admin privileges
+        '404':
+          description: User or department not found
+
+  /api/departments:
+    get:
+      tags:
+        - Departments
+      summary: Get all departments
+      description: Retrieves all departments
+      operationId: getAllDepartments
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DepartmentResponse'
+    post:
+      tags:
+        - Departments
+      summary: Create a department
+      description: Creates a new department (admin only)
+      operationId: createDepartment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+      responses:
+        '201':
+          description: Department created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+        '400':
+          description: Invalid input
+        '403':
+          description: Forbidden - requires admin privileges
+
+  /api/departments/{id}:
+    get:
+      tags:
+        - Departments
+      summary: Get department by ID
+      description: Retrieves a department by ID
+      operationId: getDepartmentById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Department details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+        '404':
+          description: Department not found
+    put:
+      tags:
+        - Departments
+      summary: Update department
+      description: Updates a department (admin only)
+      operationId: updateDepartment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+      responses:
+        '200':
+          description: Updated department
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+        '400':
+          description: Invalid input
+        '403':
+          description: Forbidden - requires admin privileges
+        '404':
+          description: Department not found
+    delete:
+      tags:
+        - Departments
+      summary: Delete department
+      description: Deletes a department (admin only)
+      operationId: deleteDepartment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Department deleted successfully
+        '403':
+          description: Forbidden - requires admin privileges
+        '404':
+          description: Department not found
+
+  /api/documents:
+    get:
+      tags:
+        - Documents
+      summary: Get all documents
+      description: Retrieves all documents accessible by the current user
+      operationId: getAllDocuments
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentResponse'
+    post:
+      tags:
+        - Documents
+      summary: Create a document
+      description: Creates a new document without a file
+      operationId: createDocument
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentRequest'
+      responses:
+        '201':
+          description: Document created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '400':
+          description: Invalid input
+
+  /api/documents/with-file:
+    post:
+      tags:
+        - Documents
+      summary: Create a document with file
+      description: Creates a new document with an attached file
+      operationId: createDocumentWithFile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                document:
+                  $ref: '#/components/schemas/DocumentRequest'
+                file:
+                  type: string
+                  format: binary
+                fileDescription:
+                  type: string
+      responses:
+        '201':
+          description: Document with file created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '400':
+          description: Invalid input
+
+  /api/documents/search:
+    get:
+      tags:
+        - Documents
+      summary: Search documents
+      description: Searches for documents by title keyword
+      operationId: searchDocuments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: keyword
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentResponse'
+
+  /api/documents/{id}:
+    get:
+      tags:
+        - Documents
+      summary: Get document by ID
+      description: Retrieves a document by ID
+      operationId: getDocumentById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '404':
+          description: Document not found
+    put:
+      tags:
+        - Documents
+      summary: Update document
+      description: Updates a document's metadata
+      operationId: updateDocument
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentRequest'
+      responses:
+        '200':
+          description: Updated document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '400':
+          description: Invalid input
+        '404':
+          description: Document not found
+    delete:
+      tags:
+        - Documents
+      summary: Delete document
+      description: Deletes a document and its associated file
+      operationId: deleteDocument
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Document deleted successfully
+        '404':
+          description: Document not found
+
+  /api/documents/{id}/with-file:
+    put:
+      tags:
+        - Documents
+      summary: Update document with file
+      description: Updates a document's metadata and replaces its file
+      operationId: updateDocumentWithFile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                document:
+                  $ref: '#/components/schemas/DocumentRequest'
+                file:
+                  type: string
+                  format: binary
+                fileDescription:
+                  type: string
+      responses:
+        '200':
+          description: Updated document with file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '400':
+          description: Invalid input
+        '404':
+          description: Document not found
+
+  /api/documents/{id}/download:
+    get:
+      tags:
+        - Documents
+      summary: Get document file download URL
+      description: Generates a download URL for a document's file
+      operationId: getDocumentFileDownloadUrl
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Download URL
+          content:
+            application/json:
+              schema:
+                type: string
+        '404':
+          description: Document or file not found
+
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: securePassword123
+        role:
+          type: string
+          enum: [ROLE_USER, ROLE_ADMIN]
+          default: ROLE_USER
+          example: ROLE_USER
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: securePassword123
+
+    JwtResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type:
+          type: string
+          example: Bearer
+        id:
+          type: integer
+          format: int64
+          example: 1
+        email:
+          type: string
+          example: user@example.com
+        roles:
+          type: array
+          items:
+            type: string
+            example: ROLE_USER
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        email:
+          type: string
+          example: user@example.com
+        role:
+          type: string
+          example: ROLE_USER
+        departments:
+          type: array
+          items:
+            type: string
+          example: ["HR", "IT"]
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: newuser@example.com
+        role:
+          type: string
+          enum: [ROLE_USER, ROLE_ADMIN]
+          example: ROLE_USER
+
+    DepartmentAssignRequest:
+      type: object
+      required:
+        - departmentIds
+      properties:
+        departmentIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+          example: [1, 2, 3]
+
+    DepartmentRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: Human Resources
+        description:
+          type: string
+          example: Department responsible for HR matters
+
+    DepartmentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Human Resources
+        description:
+          type: string
+          example: Department responsible for HR matters
+
+    DocumentRequest:
+      type: object
+      required:
+        - title
+        - categoryId
+      properties:
+        title:
+          type: string
+          example: Project Proposal
+        description:
+          type: string
+          example: Detailed proposal for the new project
+        departmentId:
+          type: integer
+          format: int64
+          example: 1
+        categoryId:
+          type: integer
+          format: int64
+          example: 2
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["proposal", "project", "planning"]
+
+    DocumentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        title:
+          type: string
+          example: Project Proposal
+        description:
+          type: string
+          example: Detailed proposal for the new project
+        fileId:
+          type: integer
+          format: int64
+          example: 10
+        fileName:
+          type: string
+          example: proposal.pdf
+        fileSize:
+          type: integer
+          format: int64
+          example: 2048576
+        fileType:
+          type: string
+          example: application/pdf
+        fileDescription:
+          type: string
+          example: PDF version of the proposal
+        departmentName:
+          type: string
+          example: IT Department
+        categoryName:
+          type: string
+          example: Proposals
+        createdBy:
+          type: integer
+          format: int64
+          example: 5
+        createdAt:
+          type: string
+          format: date-time
+          example: 2025-05-10T14:30:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2025-05-10T15:45:00Z
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["proposal", "project", "planning"]
+
+    FileUploadRequest:
+      type: object
+      required:
+        - documentId
+      properties:
+        documentId:
+          type: integer
+          format: int64
+          example: 1
+        fileDescription:
+          type: string
+          example: PDF version of the proposal
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: 2025-05-10T22:33:42Z
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: Bad Request
+        message:
+          type: string
+          example: Invalid request parameters
+        path:
+          type: string
+          example: /api/documents
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

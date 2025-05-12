@@ -11,3 +11,14 @@ services:
     volumes:
       - ./data:/data
     command: server /data --console-address ":9001"
+  createbucket:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+        sleep 5;
+        mc alias set myminio http://minio:9000 minioadmin minioadmin123;
+        mc mb myminio/documents;
+        exit 0;
+      "
