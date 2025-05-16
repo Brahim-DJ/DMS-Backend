@@ -14,9 +14,4 @@ spring:
         - id: document
           uri: http://localhost:8082
           predicates:
-            - Path=/api/documents/**, /api/categories/**
-
-jwt:
-  secret: ${JWT_SECRET}
-  tokenPrefix: "Bearer "
-  headerName: "Authorization"
+            - Path=/api/documents/**, /api/categories/**, /api/files/**

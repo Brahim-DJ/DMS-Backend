@@ -7,9 +7,17 @@ spring:
     username: ${SUPABASE_DB_USERNAME}
     password: ${SUPABASE_DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      leak-detection-threshold: 5000
+      data-source-properties:
+        prepareThreshold: 0
   jpa:
     hibernate:
       ddl-auto: update
+      # connection.handling_mode: DELAYED_ACQUISITION_AND_HOLD
+      # connection.provider_disables_autocommit: true
     show-sql: true
     properties:
       hibernate:

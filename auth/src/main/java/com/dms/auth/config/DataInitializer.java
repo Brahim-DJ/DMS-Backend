@@ -23,15 +23,15 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         // Create departments if none exist
-        if (departmentRepository.count() == 0) {
-            departmentRepository.saveAll(List.of(
-                new Department(null, "HR"),
-                new Department(null, "Finance"),
-                new Department(null, "IT"),
-                new Department(null, "Marketing"),
-                new Department(null, "Operations")
-            ));
-        }
+        // if (departmentRepository.count() == 0) {
+        //     departmentRepository.saveAll(List.of(
+        //         new Department(null, "HR"),
+        //         new Department(null, "Finance"),
+        //         new Department(null, "IT"),
+        //         new Department(null, "Marketing"),
+        //         new Department(null, "Operations")
+        //     ));
+        // }
         
         // Create admin user if it doesn't exist
         if (!userRepository.existsByEmail("admin@example.com")) {

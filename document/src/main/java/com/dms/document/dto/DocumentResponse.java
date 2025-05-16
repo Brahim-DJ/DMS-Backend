@@ -21,6 +21,7 @@ public class DocumentResponse {
     private String fileDescription;
     private String fileType;
     private Long fileSizeBytes;
+    private String fileKey;
     private String fileUrl;  // Presigned URL to access the file
     private String createdBy;
     private LocalDateTime createdAt;
